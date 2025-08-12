@@ -138,19 +138,12 @@ if [ ! -f ".env" ]; then
     echo "1. Get your API key from: https://platform.openai.com/api-keys"
     echo "2. Edit the .env file and replace 'sk-your-openai-api-key-here' with your actual key"
     echo ""
-    
-    read -p "Press Enter to open the .env file for editing..." 
-    
-    # Try to open with common editors
-    if command -v code &> /dev/null; then
-        code .env
-    elif command -v nano &> /dev/null; then
-        nano .env
-    elif command -v vim &> /dev/null; then
-        vim .env
-    else
-        log_warning "No suitable editor found. Please manually edit $(pwd)/.env"
-    fi
+    echo "To edit the file manually, run one of these commands:"
+    echo "  • code .env      (VS Code)"
+    echo "  • nano .env      (Nano editor)"
+    echo "  • vim .env       (Vim editor)"
+    echo ""
+    log_warning "Please edit the .env file to add your OpenAI API key before using the server"
 else
     log_success "Environment file already exists"
 fi
