@@ -95,21 +95,35 @@ LOG_RESPONSES=false
 
 ## 🚀 Usage
 
-Once installed, you'll have access to GPT-5 tools in Claude Code:
+Once installed, you can seamlessly use GPT-5 in Claude Code through natural conversation:
 
-### Basic Query
+### 💬 Natural Conversation (Recommended)
+
+Just chat with Claude Code and request GPT-5 when needed:
+
+```
+You: "Can you use GPT-5 to explain quantum computing in simple terms?"
+
+You: "Ask GPT-5 to help me optimize this React component: [paste your code]"
+
+You: "Use GPT-5-mini for a quick code review of this function"
+
+You: "Get GPT-5's opinion on this architectural decision with high verbosity"
+```
+
+Claude Code will automatically call the GPT-5 MCP server and return the results seamlessly.
+
+### 🔧 Direct Tool Usage (Advanced)
+
+For developers who want direct control, you can also use the tools explicitly:
 
 ```javascript
 // Simple GPT-5 query
 gpt5_query({
   "prompt": "Explain quantum computing in simple terms"
 })
-```
 
-### Advanced Query with Context
-
-```javascript
-// Query with additional context
+// Advanced query with context
 gpt5_query({
   "prompt": "How can I optimize this React component?",
   "context": "I have a component that renders a large list of items and it's causing performance issues...",
@@ -117,11 +131,7 @@ gpt5_query({
   "verbosity": "high",
   "reasoning_effort": "extended"
 })
-```
 
-### Model Selection
-
-```javascript
 // Use different GPT-5 variants
 gpt5_query({
   "prompt": "Quick code review of this function",
@@ -130,18 +140,26 @@ gpt5_query({
 })
 ```
 
-### Custom Parameters
+### 🎯 Usage Examples
 
-```javascript
-// Fine-tune the response
-gpt5_query({
-  "prompt": "Generate a creative story",
-  "model": "gpt-5",
-  "verbosity": "medium",
-  "reasoning_effort": "standard",
-  "temperature": 0.8,
-  "max_tokens": 2000
-})
+**Code Review:**
+```
+"Use GPT-5 to review this Python function for best practices and security issues"
+```
+
+**Architecture Discussion:**
+```
+"Ask GPT-5 with extended reasoning effort about this microservices design"
+```
+
+**Quick Help:**
+```
+"GPT-5-nano: how do I fix this JavaScript error?"
+```
+
+**Creative Tasks:**
+```
+"Use GPT-5 with high temperature to brainstorm API naming conventions"
 ```
 
 ## 🛠️ Available Tools

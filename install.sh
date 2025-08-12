@@ -132,18 +132,48 @@ if [ ! -f ".env" ]; then
     echo ""
     echo "🔑 IMPORTANT: OpenAI API Key Required"
     echo ""
-    echo "You need to add your OpenAI API key to the .env file."
-    echo "File location: $(pwd)/.env"
+    echo "You need an OpenAI API key to use GPT-5."
+    echo "Get your API key from: https://platform.openai.com/api-keys"
     echo ""
-    echo "1. Get your API key from: https://platform.openai.com/api-keys"
-    echo "2. Edit the .env file and replace 'sk-your-openai-api-key-here' with your actual key"
-    echo ""
-    echo "To edit the file manually, run one of these commands:"
-    echo "  • code .env      (VS Code)"
-    echo "  • nano .env      (Nano editor)"
-    echo "  • vim .env       (Vim editor)"
-    echo ""
-    log_warning "Please edit the .env file to add your OpenAI API key before using the server"
+    
+    # Check if running in non-interactive mode
+    if [ -t 0 ]; then
+        # Interactive mode - ask user
+        read -p "Do you want to configure your OpenAI API key now? (y/n): " configure_now
+    else
+        # Non-interactive mode (e.g., CI/CD) - skip configuration
+        configure_now="n"
+        log_info "Non-interactive mode detected, skipping API key configuration"
+    fi
+    
+    if [[ $configure_now =~ ^[Yy]$ ]]; then
+        echo ""
+        echo "Please enter your OpenAI API key (starts with 'sk-'):"
+        read -s api_key  # -s hides the input for security
+        echo ""
+        
+        if [[ $api_key == sk-* ]]; then
+            # Replace the API key in .env file
+            sed -i.bak "s/sk-your-openai-api-key-here/$api_key/g" .env
+            rm .env.bak 2>/dev/null || true
+            log_success "OpenAI API key configured successfully!"
+        else
+            log_warning "Invalid API key format. Please edit .env file manually later."
+            log_info "API keys should start with 'sk-'"
+        fi
+    else
+        echo ""
+        echo "You can configure your API key later by editing the .env file:"
+        echo "File location: $(pwd)/.env"
+        echo ""
+        echo "To edit the file manually, run one of these commands:"
+        echo "  • code .env      (VS Code)"
+        echo "  • nano .env      (Nano editor)"
+        echo "  • vim .env       (Vim editor)"
+        echo ""
+        echo "Replace 'sk-your-openai-api-key-here' with your actual API key."
+        log_warning "Remember to configure your API key before using the server"
+    fi
 else
     log_success "Environment file already exists"
 fi
@@ -249,12 +279,17 @@ echo ""
 echo "🔧 Next steps:"
 echo "   1. Ensure your OpenAI API key is configured in .env"
 echo "   2. Test the connection: ./test.sh"
-echo "   3. Start using GPT-5 in Claude Code with the 'gpt5_query' tool"
+echo "   3. Start using GPT-5 in Claude Code!"
 echo ""
-echo "📖 Usage examples:"
-echo "   • Simple query: gpt5_query({\"prompt\": \"Explain quantum computing\"})"
-echo "   • With context: gpt5_query({\"prompt\": \"Continue this\", \"context\": \"Previous conversation...\"})"
-echo "   • Custom model: gpt5_query({\"prompt\": \"Question\", \"model\": \"gpt-5-mini\"})"
+echo "💬 How to use (Natural Conversation - Recommended):"
+echo "   Just ask Claude Code things like:"
+echo "   • \"Use GPT-5 to explain quantum computing\""
+echo "   • \"Ask GPT-5-mini for a quick code review\""
+echo "   • \"Get GPT-5's opinion on this with high verbosity\""
+echo ""
+echo "🔧 Advanced usage (Direct tool calls):"
+echo "   • gpt5_query({\"prompt\": \"Your question\"})"
+echo "   • gpt5_query({\"prompt\": \"Question\", \"model\": \"gpt-5-mini\"})"
 echo ""
 echo "🆘 Troubleshooting:"
 echo "   • Test connection: ./test.sh"
