@@ -158,7 +158,28 @@ else
 fi
 
 # Check if API key is configured
-if grep -q "sk-your-openai-api-key-here" .env || ! grep -q "OPENAI_API_KEY=sk-" .env; then
+log_info "Checking API key configuration..."
+
+# Debug: Show what we're checking
+if [ "$LOG_LEVEL" = "debug" ]; then
+    echo "Debug: Checking for placeholder key..."
+    grep "sk-your-openai-api-key-here" .env || echo "No placeholder found"
+    echo "Debug: Checking for valid API key..."
+    grep "OPENAI_API_KEY=sk-" .env || echo "No valid API key found"
+fi
+
+if grep -q "sk-your-openai-api-key-here" .env; then
+    log_warning "Placeholder API key detected"
+    API_KEY_NEEDED=true
+elif ! grep -q "OPENAI_API_KEY=sk-" .env; then
+    log_warning "No valid API key found"
+    API_KEY_NEEDED=true
+else
+    log_success "Valid API key appears to be configured"
+    API_KEY_NEEDED=false
+fi
+
+if [ "$API_KEY_NEEDED" = "true" ]; then
     echo ""
     echo "🔑 IMPORTANT: OpenAI API Key Required"
     echo ""
@@ -166,20 +187,14 @@ if grep -q "sk-your-openai-api-key-here" .env || ! grep -q "OPENAI_API_KEY=sk-" 
     echo "Get your API key from: https://platform.openai.com/api-keys"
     echo ""
     
-    # Check if running in non-interactive mode or from pipe
-    if [ -t 0 ] && [ -t 1 ]; then
-        # Interactive mode - ask user
-        read -p "Do you want to configure your OpenAI API key now? (y/n): " configure_now
-    else
-        # Non-interactive mode (e.g., curl | bash, CI/CD) - still ask but with timeout
-        log_info "Detected piped input. You have 10 seconds to respond."
-        read -t 10 -p "Do you want to configure your OpenAI API key now? (y/n): " configure_now || configure_now="n"
-        
-        if [ -z "$configure_now" ]; then
-            configure_now="n"
-            echo ""
-            log_info "No response received, skipping API key configuration"
-        fi
+    # Always try to get user input, even in piped mode
+    echo "You have 15 seconds to respond (or the script will continue without configuring the API key):"
+    read -t 15 -p "Do you want to configure your OpenAI API key now? (y/n): " configure_now || configure_now="n"
+    
+    if [ -z "$configure_now" ]; then
+        configure_now="n"
+        echo ""
+        log_info "No response received within 15 seconds, skipping API key configuration"
     fi
     
     if [[ $configure_now =~ ^[Yy]$ ]]; then
@@ -210,8 +225,6 @@ if grep -q "sk-your-openai-api-key-here" .env || ! grep -q "OPENAI_API_KEY=sk-" 
         echo "Replace 'sk-your-openai-api-key-here' with your actual API key."
         log_warning "Remember to configure your API key before using the server"
     fi
-else
-    log_success "OpenAI API key appears to be configured"
 fi
 
 # Test configuration
