@@ -94,16 +94,40 @@ fi
 if [ "$IS_REMOTE_INSTALL" = true ]; then
     log_header "Downloading GPT-5 MCP Server"
     
+    # Check for existing installation
     if [ -d "$INSTALL_DIR" ]; then
-        log_warning "Directory $INSTALL_DIR already exists. Backing up..."
-        mv "$INSTALL_DIR" "${INSTALL_DIR}.backup.$(date +%s)"
+        log_warning "Directory $INSTALL_DIR already exists."
+        
+        # Check if user wants to update or reinstall
+        if [ -t 0 ] && [ -t 1 ]; then
+            read -p "Do you want to remove existing installation and reinstall? (y/n): " reinstall
+        else
+            read -t 10 -p "Do you want to remove existing installation and reinstall? (y/n): " reinstall || reinstall="y"
+        fi
+        
+        if [[ $reinstall =~ ^[Yy]$ ]]; then
+            log_info "Removing existing installation..."
+            rm -rf "$INSTALL_DIR"
+            log_success "Existing installation removed"
+        else
+            log_info "Updating existing installation..."
+            cd "$INSTALL_DIR"
+            git pull origin main || {
+                log_warning "Git pull failed, removing and reinstalling..."
+                cd /
+                rm -rf "$INSTALL_DIR"
+            }
+        fi
     fi
     
-    log_info "Cloning repository to $INSTALL_DIR"
-    git clone "https://github.com/youbin2014/gpt5_mcp.git" "$INSTALL_DIR"
-    cd "$INSTALL_DIR"
+    # Clone if directory doesn't exist
+    if [ ! -d "$INSTALL_DIR" ]; then
+        log_info "Cloning repository to $INSTALL_DIR"
+        git clone "https://github.com/youbin2014/gpt5_mcp.git" "$INSTALL_DIR"
+    fi
     
-    log_success "Repository downloaded successfully"
+    cd "$INSTALL_DIR"
+    log_success "Repository ready"
 fi
 
 # Install dependencies
@@ -136,14 +160,20 @@ if [ ! -f ".env" ]; then
     echo "Get your API key from: https://platform.openai.com/api-keys"
     echo ""
     
-    # Check if running in non-interactive mode
-    if [ -t 0 ]; then
+    # Check if running in non-interactive mode or from pipe
+    if [ -t 0 ] && [ -t 1 ]; then
         # Interactive mode - ask user
         read -p "Do you want to configure your OpenAI API key now? (y/n): " configure_now
     else
-        # Non-interactive mode (e.g., CI/CD) - skip configuration
-        configure_now="n"
-        log_info "Non-interactive mode detected, skipping API key configuration"
+        # Non-interactive mode (e.g., curl | bash, CI/CD) - still ask but with timeout
+        log_info "Detected piped input. You have 10 seconds to respond."
+        read -t 10 -p "Do you want to configure your OpenAI API key now? (y/n): " configure_now || configure_now="n"
+        
+        if [ -z "$configure_now" ]; then
+            configure_now="n"
+            echo ""
+            log_info "No response received, skipping API key configuration"
+        fi
     fi
     
     if [[ $configure_now =~ ^[Yy]$ ]]; then
@@ -201,25 +231,46 @@ fi
 # Configure Claude Code MCP
 log_header "Configuring Claude Code Integration"
 
-# Build the MCP add command
-MCP_COMMAND="claude mcp add gpt5-claude-mcp \"node $(pwd)/dist/server.js\""
-
-log_info "Adding MCP server to Claude Code..."
-echo "Running: $MCP_COMMAND"
-
 if command -v claude &> /dev/null; then
+    # Check if MCP server already exists
+    if claude mcp list 2>/dev/null | grep -q "gpt5-claude-mcp"; then
+        log_warning "Existing gpt5-claude-mcp server found, removing..."
+        if claude mcp remove gpt5-claude-mcp 2>/dev/null; then
+            log_success "Removed existing MCP server"
+        else
+            log_warning "Could not remove existing server, will try to overwrite"
+        fi
+    fi
+    
+    # Build the MCP add command
+    MCP_COMMAND="claude mcp add gpt5-claude-mcp \"node $(pwd)/dist/server.js\""
+    
+    log_info "Adding MCP server to Claude Code..."
+    echo "Running: $MCP_COMMAND"
+    
     if eval "$MCP_COMMAND"; then
         log_success "MCP server added to Claude Code successfully"
+        
+        # Verify the installation
+        if claude mcp list 2>/dev/null | grep -q "gpt5-claude-mcp"; then
+            log_success "MCP server installation verified"
+        else
+            log_warning "MCP server may not be properly configured"
+        fi
     else
         log_error "Failed to add MCP server to Claude Code"
         log_info "You can manually add it later with:"
         echo "  $MCP_COMMAND"
+        echo ""
+        echo "Or try these troubleshooting steps:"
+        echo "  1. claude mcp remove gpt5-claude-mcp"
+        echo "  2. claude mcp add gpt5-claude-mcp \"node $(pwd)/dist/server.js\""
     fi
 else
     log_warning "Claude Code not found. Manual configuration required:"
     echo ""
     echo "After installing Claude Code, run:"
-    echo "  $MCP_COMMAND"
+    echo "  claude mcp add gpt5-claude-mcp \"node $(pwd)/dist/server.js\""
     echo ""
 fi
 
