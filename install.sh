@@ -149,10 +149,16 @@ log_success "TypeScript compilation completed"
 # Set up environment configuration
 log_header "Setting Up Environment Configuration"
 
+# Create .env file if it doesn't exist
 if [ ! -f ".env" ]; then
     log_info "Creating .env file from template..."
     cp config/example.env .env
-    
+else
+    log_success "Environment file already exists"
+fi
+
+# Check if API key is configured
+if grep -q "sk-your-openai-api-key-here" .env || ! grep -q "OPENAI_API_KEY=sk-" .env; then
     echo ""
     echo "🔑 IMPORTANT: OpenAI API Key Required"
     echo ""
@@ -205,7 +211,7 @@ if [ ! -f ".env" ]; then
         log_warning "Remember to configure your API key before using the server"
     fi
 else
-    log_success "Environment file already exists"
+    log_success "OpenAI API key appears to be configured"
 fi
 
 # Test configuration
