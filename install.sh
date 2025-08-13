@@ -1,9 +1,13 @@
-#!/bin/bash
+#!/usr/bin/env bash
+# One-shot installation script for gpt5-claude-mcp
+# Supports macOS and Linux with bash
 
-# GPT-5 Claude MCP - One-Click Installation Script
-# This script sets up the GPT-5 MCP server and integrates it with Claude Code
+set -euo pipefail
 
-set -e  # Exit on any error
+# Configuration
+APP_NAME="gpt5-claude-mcp"
+REPO_URL="https://github.com/youbin2014/gpt5_mcp.git"
+INSTALL_DIR="${PWD}/gpt5_mcp"
 
 # Colors for output
 RED='\033[0;31m'
@@ -12,373 +16,253 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-# Helper functions
-log_info() {
+echo_info() {
     echo -e "${BLUE}ℹ️  $1${NC}"
 }
 
-log_success() {
+echo_success() {
     echo -e "${GREEN}✅ $1${NC}"
 }
 
-log_warning() {
+echo_warning() {
     echo -e "${YELLOW}⚠️  $1${NC}"
 }
 
-log_error() {
+echo_error() {
     echo -e "${RED}❌ $1${NC}"
 }
 
-log_header() {
-    echo -e "\n${BLUE}🚀 $1${NC}"
-    echo "=================================="
-}
-
-# Determine installation directory
-if [ -z "$BASH_SOURCE" ]; then
-    # Running from curl | bash - install in current directory
-    INSTALL_DIR="$(pwd)/gpt5_mcp"
-    IS_REMOTE_INSTALL=true
-    REPO_URL="https://github.com/youbin2014/gpt5_mcp.git"
-else
-    # Running locally - install in current directory
-    INSTALL_DIR="$(pwd)"
-    IS_REMOTE_INSTALL=false
-fi
-
-log_header "GPT-5 Claude MCP Installation"
-
-echo "🎯 This script will install GPT-5 MCP server in your current project:"
-echo "   • Install GPT-5 MCP server dependencies"
-echo "   • Build the TypeScript project"  
-echo "   • Configure Claude Code integration"
-echo "   • Set up environment configuration"
-echo "   • Validate the installation"
-echo ""
-echo "📍 Installation Directory: $INSTALL_DIR"
-echo ""
-
 # Check prerequisites
-log_header "Checking Prerequisites"
-
-# Check Node.js
-if ! command -v node &> /dev/null; then
-    log_error "Node.js is not installed. Please install Node.js 18+ and try again."
-    exit 1
-fi
-
-NODE_VERSION=$(node -v | cut -d 'v' -f2)
-NODE_MAJOR=$(echo $NODE_VERSION | cut -d '.' -f1)
-
-if [ "$NODE_MAJOR" -lt 18 ]; then
-    log_error "Node.js version $NODE_VERSION is too old. Please install Node.js 18+ and try again."
-    exit 1
-fi
-
-log_success "Node.js version $NODE_VERSION detected"
-
-# Check npm
-if ! command -v npm &> /dev/null; then
-    log_error "npm is not installed. Please install npm and try again."
-    exit 1
-fi
-
-log_success "npm $(npm -v) detected"
-
-# Check Claude Code
-if ! command -v claude &> /dev/null; then
-    log_warning "Claude Code CLI not found in PATH"
-    log_info "You may need to install Claude Code or add it to your PATH"
-    log_info "Visit: https://docs.anthropic.com/en/docs/claude-code"
-else
-    log_success "Claude Code CLI detected"
-fi
-
-# Download repository if remote install
-if [ "$IS_REMOTE_INSTALL" = true ]; then
-    log_header "Downloading GPT-5 MCP Server"
+check_prerequisites() {
+    echo_info "Checking prerequisites..."
     
-    # Check for existing installation
-    if [ -d "$INSTALL_DIR" ]; then
-        log_warning "Directory $INSTALL_DIR already exists."
-        echo "Updating existing installation..."
-        cd "$INSTALL_DIR"
-        git pull origin main || {
-            log_warning "Git pull failed, removing and reinstalling..."
-            cd /
-            rm -rf "$INSTALL_DIR"
-        }
+    # Check for Node.js
+    if ! command -v node &> /dev/null; then
+        echo_error "Node.js is not installed. Please install Node.js 18+ from https://nodejs.org/"
+        exit 1
     fi
     
-    # Clone if directory doesn't exist
-    if [ ! -d "$INSTALL_DIR" ]; then
-        log_info "Cloning repository to $INSTALL_DIR"
-        git clone "https://github.com/youbin2014/gpt5_mcp.git" "$INSTALL_DIR"
+    # Check Node.js version
+    NODE_VERSION=$(node -v | cut -d'v' -f2)
+    MAJOR_VERSION=$(echo $NODE_VERSION | cut -d'.' -f1)
+    if [ "$MAJOR_VERSION" -lt 18 ]; then
+        echo_error "Node.js version 18+ is required. Current version: $NODE_VERSION"
+        exit 1
+    fi
+    echo_success "Node.js $NODE_VERSION detected"
+    
+    # Check for npm
+    if ! command -v npm &> /dev/null; then
+        echo_error "npm is not installed"
+        exit 1
+    fi
+    echo_success "npm detected"
+    
+    # Check for git
+    if ! command -v git &> /dev/null; then
+        echo_error "git is not installed"
+        exit 1
+    fi
+    echo_success "git detected"
+    
+    # Check for Claude CLI
+    if ! command -v claude &> /dev/null; then
+        echo_error "Claude CLI is not installed. Please install it first."
+        echo_info "Installation guide: https://docs.anthropic.com/en/docs/claude-code"
+        exit 1
+    fi
+    echo_success "Claude CLI detected"
+}
+
+# Clone or update repository
+setup_repository() {
+    echo_info "Setting up repository..."
+    
+    if [ -d "$INSTALL_DIR/.git" ]; then
+        echo_info "Repository exists, updating..."
+        git -C "$INSTALL_DIR" pull --rebase
+        echo_success "Repository updated"
+    else
+        echo_info "Cloning repository..."
+        git clone --depth=1 "$REPO_URL" "$INSTALL_DIR"
+        echo_success "Repository cloned"
     fi
     
     cd "$INSTALL_DIR"
-    log_success "Repository ready"
-fi
+}
 
-# Install dependencies
-log_header "Installing Dependencies"
-
-log_info "Running npm install..."
-npm install
-
-log_success "Dependencies installed successfully"
-
-# Build TypeScript
-log_header "Building TypeScript Project"
-
-log_info "Compiling TypeScript to JavaScript..."
-npm run build
-
-log_success "TypeScript compilation completed"
-
-# Set up environment configuration
-log_header "Setting Up Environment Configuration"
-
-# Create .env file if it doesn't exist
-if [ ! -f ".env" ]; then
-    log_info "Creating .env file from template..."
-    cp config/example.env .env
-else
-    log_success "Environment file already exists"
-fi
-
-# Check if API key is configured
-log_info "Checking API key configuration..."
-
-# Debug: Show what we're checking
-if [ "$LOG_LEVEL" = "debug" ]; then
-    echo "Debug: Checking for placeholder key..."
-    grep "sk-your-openai-api-key-here" .env || echo "No placeholder found"
-    echo "Debug: Checking for valid API key..."
-    grep "OPENAI_API_KEY=sk-" .env || echo "No valid API key found"
-fi
-
-if grep -q "sk-your-openai-api-key-here" .env; then
-    log_warning "Placeholder API key detected"
-    API_KEY_NEEDED=true
-elif ! grep -q "OPENAI_API_KEY=sk-" .env; then
-    log_warning "No valid API key found"
-    API_KEY_NEEDED=true
-else
-    log_success "Valid API key appears to be configured"
-    API_KEY_NEEDED=false
-fi
-
-if [ "$API_KEY_NEEDED" = "true" ]; then
-    echo ""
-    echo "🔑 IMPORTANT: OpenAI API Key Required"
-    echo ""
-    echo "You need an OpenAI API key to use GPT-5."
-    echo "Get your API key from: https://platform.openai.com/api-keys"
-    echo ""
+# Setup environment file
+setup_environment() {
+    echo_info "Setting up environment configuration..."
     
-    # Always try to get user input, even in piped mode
-    echo "You have 15 seconds to respond (or the script will continue without configuring the API key):"
-    read -t 15 -p "Do you want to configure your OpenAI API key now? (y/n): " configure_now || configure_now="n"
+    ENV_FILE="$INSTALL_DIR/.env"
     
-    if [ -z "$configure_now" ]; then
-        configure_now="n"
-        echo ""
-        log_info "No response received within 15 seconds, skipping API key configuration"
+    # Create .env from example if it doesn't exist
+    if [ ! -f "$ENV_FILE" ]; then
+        if [ -f ".env.example" ]; then
+            cp .env.example .env
+            echo_success "Created .env from template"
+        else
+            touch .env
+            echo_success "Created empty .env file"
+        fi
     fi
     
-    if [[ $configure_now =~ ^[Yy]$ ]]; then
-        echo ""
-        echo "Please enter your OpenAI API key (starts with 'sk-'):"
-        read -s api_key  # -s hides the input for security
-        echo ""
-        
-        if [[ $api_key == sk-* ]]; then
-            # Replace the API key in .env file
-            sed -i.bak "s/sk-your-openai-api-key-here/$api_key/g" .env
-            rm .env.bak 2>/dev/null || true
-            log_success "OpenAI API key configured successfully!"
-        else
-            log_warning "Invalid API key format. Please edit .env file manually later."
-            log_info "API keys should start with 'sk-'"
+    # Get current API key from environment or .env file
+    DEFAULT_KEY=""
+    if [ -n "${OPENAI_API_KEY:-}" ]; then
+        DEFAULT_KEY="$OPENAI_API_KEY"
+    elif [ -f "$ENV_FILE" ]; then
+        DEFAULT_KEY=$(grep -E '^OPENAI_API_KEY=' "$ENV_FILE" 2>/dev/null | head -n1 | cut -d= -f2- || true)
+    fi
+    
+    # Interactive API key input
+    echo ""
+    echo_info "OpenAI API Key Configuration"
+    echo "You can get your API key from: https://platform.openai.com/api-keys"
+    
+    if [ -n "$DEFAULT_KEY" ] && [[ "$DEFAULT_KEY" == sk-* ]]; then
+        echo_info "Found existing API key: ${DEFAULT_KEY:0:12}..."
+        read -r -p "Enter new OpenAI API key (sk-...), or press Enter to keep existing: " KEY_INPUT
+        if [ -z "$KEY_INPUT" ]; then
+            KEY_INPUT="$DEFAULT_KEY"
         fi
     else
-        echo ""
-        echo "You can configure your API key later by editing the .env file:"
-        echo "File location: $(pwd)/.env"
-        echo ""
-        echo "To edit the file manually, run one of these commands:"
-        echo "  • code .env      (VS Code)"
-        echo "  • nano .env      (Nano editor)"
-        echo "  • vim .env       (Vim editor)"
-        echo ""
-        echo "Replace 'sk-your-openai-api-key-here' with your actual API key."
-        log_warning "Remember to configure your API key before using the server"
-    fi
-fi
-
-# Test configuration
-log_header "Testing Configuration"
-
-log_info "Validating environment configuration..."
-
-# Check if OPENAI_API_KEY is set
-if grep -q "sk-your-openai-api-key-here" .env || ! grep -q "OPENAI_API_KEY=sk-" .env; then
-    log_warning "OpenAI API key not configured properly"
-    log_info "Please edit .env file and add your API key before proceeding"
-else
-    log_success "OpenAI API key appears to be configured"
-    
-    # Test the server
-    log_info "Testing GPT-5 connection..."
-    timeout 10s npm run dev -- --test-only 2>/dev/null || {
-        log_warning "Connection test timed out or failed"
-        log_info "This may be normal if API key is not yet configured"
-    }
-fi
-
-# Configure Claude Code MCP
-log_header "Configuring Claude Code Integration"
-
-if command -v claude &> /dev/null; then
-    # Check if MCP server already exists
-    if claude mcp list 2>/dev/null | grep -q "gpt5-claude-mcp"; then
-        log_warning "Existing gpt5-claude-mcp server found, removing..."
-        if claude mcp remove gpt5-claude-mcp 2>/dev/null; then
-            log_success "Removed existing MCP server"
-        else
-            log_warning "Could not remove existing server, will try to overwrite"
+        read -r -p "Enter your OpenAI API key (sk-...), or press Enter to skip: " KEY_INPUT
+        if [ -z "$KEY_INPUT" ] && [ -n "$DEFAULT_KEY" ]; then
+            KEY_INPUT="$DEFAULT_KEY"
         fi
     fi
     
-    # Build the MCP add command
-    MCP_SERVER_PATH="$(pwd)/dist/server.js"
-    MCP_COMMAND="claude mcp add gpt5-claude-mcp \"node $MCP_SERVER_PATH\""
-    
-    # Create a project-specific MCP configuration script
-    cat > mcp-setup.sh << EOF
-#!/bin/bash
-# MCP setup script for this installation
-echo "🔧 Setting up GPT-5 MCP for this project..."
-claude mcp remove gpt5-claude-mcp 2>/dev/null || true
-claude mcp add gpt5-claude-mcp "node \$(dirname \$0)/dist/server.js"
-echo "✅ GPT-5 MCP server configured for this project"
-EOF
-    chmod +x mcp-setup.sh
-    
-    log_info "Created project-specific MCP setup script: mcp-setup.sh"
-    
-    log_info "Adding MCP server to Claude Code..."
-    echo "Running: $MCP_COMMAND"
-    
-    if eval "$MCP_COMMAND"; then
-        log_success "MCP server added to Claude Code successfully"
-        
-        # Verify the installation
-        if claude mcp list 2>/dev/null | grep -q "gpt5-claude-mcp"; then
-            log_success "MCP server installation verified"
+    # Update .env file with API key
+    if [ -n "$KEY_INPUT" ]; then
+        if grep -q "^OPENAI_API_KEY=" "$ENV_FILE"; then
+            # Update existing key
+            if command -v sed &> /dev/null; then
+                sed -i.bak "s#^OPENAI_API_KEY=.*#OPENAI_API_KEY=${KEY_INPUT}#g" "$ENV_FILE"
+                rm -f "${ENV_FILE}.bak" 2>/dev/null || true
+            else
+                # Fallback for systems without sed
+                grep -v "^OPENAI_API_KEY=" "$ENV_FILE" > "${ENV_FILE}.tmp" || true
+                echo "OPENAI_API_KEY=${KEY_INPUT}" >> "${ENV_FILE}.tmp"
+                mv "${ENV_FILE}.tmp" "$ENV_FILE"
+            fi
         else
-            log_warning "MCP server may not be properly configured"
+            # Add new key
+            echo "OPENAI_API_KEY=${KEY_INPUT}" >> "$ENV_FILE"
         fi
+        echo_success "API key configured in .env file"
     else
-        log_error "Failed to add MCP server to Claude Code"
-        log_info "You can manually add it later with:"
-        echo "  $MCP_COMMAND"
-        echo ""
-        echo "Or try these troubleshooting steps:"
-        echo "  1. claude mcp remove gpt5-claude-mcp"
-        echo "  2. claude mcp add gpt5-claude-mcp \"node $(pwd)/dist/server.js\""
+        echo_warning "No API key provided. You'll need to set it manually or pass it during registration."
     fi
-else
-    log_warning "Claude Code not found. Manual configuration required:"
+}
+
+# Build the project
+build_project() {
+    echo_info "Installing dependencies and building project..."
+    
+    npm install
+    echo_success "Dependencies installed"
+    
+    npm run build
+    echo_success "Project built successfully"
+}
+
+# Register with Claude MCP
+register_mcp() {
+    echo_info "Registering with Claude MCP..."
+    
+    # Remove any existing registrations
+    claude mcp remove "$APP_NAME" 2>/dev/null || true
+    claude mcp remove --scope user "$APP_NAME" 2>/dev/null || true
+    echo_info "Cleaned up any existing registrations"
+    
+    # Get final API key for registration
+    FINAL_KEY=""
+    if [ -f "$ENV_FILE" ]; then
+        FINAL_KEY=$(grep -E '^OPENAI_API_KEY=' "$ENV_FILE" 2>/dev/null | head -n1 | cut -d= -f2- || true)
+    fi
+    
+    # Prepare registration command
+    SERVER_PATH="$INSTALL_DIR/dist/server.js"
+    
+    if [ -n "$FINAL_KEY" ] && [[ "$FINAL_KEY" == sk-* ]]; then
+        # Register with API key via environment variable
+        echo_info "Registering with API key injection..."
+        claude mcp add --scope user "$APP_NAME" --env OPENAI_API_KEY="$FINAL_KEY" -- node "$SERVER_PATH"
+    else
+        # Register without API key (will read from .env at runtime)
+        echo_info "Registering without API key injection (will read from .env)..."
+        claude mcp add --scope user "$APP_NAME" -- node "$SERVER_PATH"
+    fi
+    
+    echo_success "MCP server registered successfully"
+}
+
+# Health check
+health_check() {
+    echo_info "Performing health check..."
+    
+    # Set timeout for MCP operations
+    export MCP_TIMEOUT=15000
+    
+    if claude mcp list | grep -q "$APP_NAME"; then
+        echo_success "Health check passed - MCP server is registered and responsive"
+        echo_info "You can now use the gpt5_query tool in Claude Code!"
+        echo ""
+        echo_info "Example usage:"
+        echo "  - gpt5_query with prompt: 'Explain quantum computing'"
+        echo "  - gpt5_test_connection to verify API connectivity"
+    else
+        echo_warning "Health check failed - MCP server may not be properly configured"
+        echo_info "Please check your API key configuration:"
+        echo "  1. Verify your key in: $ENV_FILE"
+        echo "  2. Re-register manually if needed:"
+        echo "     claude mcp add --scope user $APP_NAME --env OPENAI_API_KEY='your-key' -- node '$SERVER_PATH'"
+    fi
+}
+
+# Error handling
+handle_error() {
+    echo_error "Installation failed!"
+    echo_info "Troubleshooting steps:"
+    echo "  1. Check your OpenAI API key in: $INSTALL_DIR/.env"
+    echo "  2. Ensure you have Node.js 18+ installed"
+    echo "  3. Verify Claude CLI is properly installed"
+    echo "  4. Check the installation log above for specific errors"
     echo ""
-    echo "After installing Claude Code, run:"
-    echo "  claude mcp add gpt5-claude-mcp \"node $(pwd)/dist/server.js\""
+    echo_info "Manual registration command:"
+    echo "  claude mcp add --scope user $APP_NAME --env OPENAI_API_KEY='your-key' -- node '$INSTALL_DIR/dist/server.js'"
+    exit 1
+}
+
+# Main installation flow
+main() {
+    echo_info "Starting gpt5-claude-mcp installation..."
     echo ""
-fi
+    
+    # Set error trap
+    trap handle_error ERR
+    
+    check_prerequisites
+    setup_repository
+    setup_environment
+    build_project
+    register_mcp
+    health_check
+    
+    echo ""
+    echo_success "🎉 Installation completed successfully!"
+    echo_info "The gpt5-claude-mcp server is now ready to use in Claude Code."
+    echo ""
+    echo_info "Installation directory: $INSTALL_DIR"
+    echo_info "Configuration file: $INSTALL_DIR/.env"
+    echo ""
+    echo_info "Next steps:"
+    echo "  1. Open Claude Code"
+    echo "  2. Try: gpt5_query with prompt 'Hello from GPT-5!'"
+    echo "  3. Use gpt5_test_connection to verify everything works"
+}
 
-# Create convenience scripts
-log_header "Creating Convenience Scripts"
-
-# Start script
-cat > start.sh << 'EOF'
-#!/bin/bash
-echo "🚀 Starting GPT-5 MCP Server..."
-cd "$(dirname "$0")"
-node dist/server.js
-EOF
-
-chmod +x start.sh
-
-# Test script
-cat > test.sh << 'EOF'
-#!/bin/bash
-echo "🔍 Testing GPT-5 MCP Server..."
-cd "$(dirname "$0")"
-export NODE_ENV=test
-node dist/server.js --test-connection
-EOF
-
-chmod +x test.sh
-
-log_success "Convenience scripts created (start.sh, test.sh)"
-
-# Final validation
-log_header "Final Validation"
-
-# Check build output
-if [ -f "dist/server.js" ]; then
-    log_success "Server build completed successfully"
-else
-    log_error "Server build failed - dist/server.js not found"
-    exit 1
-fi
-
-# Check environment
-if [ -f ".env" ]; then
-    log_success "Environment configuration file exists"
-else
-    log_error "Environment configuration file missing"
-    exit 1
-fi
-
-# Installation complete
-log_header "Installation Complete!"
-
-echo ""
-echo "🎉 GPT-5 Claude MCP Server has been installed successfully!"
-echo ""
-echo "📍 Installation Directory: $(pwd)"
-echo ""
-echo "🔧 Installation completed!"
-echo ""
-echo "📂 Files created in this project:"
-echo "   • dist/server.js - MCP server"
-echo "   • .env - Configuration file"
-echo "   • mcp-setup.sh - Project MCP setup script"
-echo "   • test.sh - Connection test script"
-echo ""
-echo "🔧 Next steps:"
-echo "   1. Ensure your OpenAI API key is configured in .env"
-echo "   2. Test the connection: ./test.sh"
-echo "   3. GPT-5 is ready to use in Claude Code!"
-echo ""
-echo "💬 How to use (Natural Conversation - Recommended):"
-echo "   Just ask Claude Code things like:"
-echo "   • \"Use GPT-5 to explain quantum computing\""
-echo "   • \"Ask GPT-5-mini for a quick code review\""
-echo "   • \"Get GPT-5's opinion on this with high verbosity\""
-echo ""
-echo "🔧 Advanced usage (Direct tool calls):"
-echo "   • gpt5_query({\"prompt\": \"Your question\"})"
-echo "   • gpt5_query({\"prompt\": \"Question\", \"model\": \"gpt-5-mini\"})"
-echo ""
-echo "🆘 Troubleshooting:"
-echo "   • Test connection: ./test.sh"
-echo "   • View logs: Check console output when running Claude Code"
-echo "   • Configuration: Edit .env file for API key and settings"
-echo ""
-echo "📚 Documentation: See README.md for detailed usage instructions"
-echo ""
-
-log_success "Setup completed successfully! 🚀"
+# Run main function
+main "$@"

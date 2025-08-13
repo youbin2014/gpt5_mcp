@@ -39,21 +39,12 @@ export class GPT5Client {
       const startTime = Date.now();
       
       // Use the Chat Completions API (compatible with GPT-5)
-      const requestParams: any = {
+      const response = await this.openai.chat.completions.create({
         model: openaiRequest.model,
         messages: openaiRequest.input,
-      };
-      
-      // Use max_completion_tokens for newer models, fallback to max_tokens for older ones
-      if (openaiRequest.max_output_tokens) {
-        requestParams.max_completion_tokens = openaiRequest.max_output_tokens;
-      }
-      
-      if (openaiRequest.temperature !== undefined) {
-        requestParams.temperature = openaiRequest.temperature;
-      }
-      
-      const response = await this.openai.chat.completions.create(requestParams);
+        max_tokens: openaiRequest.max_output_tokens,
+        temperature: openaiRequest.temperature,
+      } as any);
       
       const endTime = Date.now();
       const responseTime = endTime - startTime;

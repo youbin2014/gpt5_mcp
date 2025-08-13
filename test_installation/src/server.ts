@@ -1,8 +1,5 @@
 #!/usr/bin/env node
 
-import path from "path";
-import fs from "fs";
-import dotenv from "dotenv";
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import {
@@ -20,40 +17,6 @@ import {
   REASONING_EFFORT_LEVELS,
   GPT5_MODELS
 } from './types.js';
-
-// Enhanced .env loading with multiple candidate paths
-const projectRoot = path.resolve(path.dirname(new URL(import.meta.url).pathname), "..");
-const candidates = [
-  path.join(projectRoot, ".env"),
-  path.join(process.cwd(), ".env"),
-];
-
-for (const envPath of candidates) {
-  if (fs.existsSync(envPath)) {
-    console.log(`🔧 Loading environment from: ${envPath}`);
-    dotenv.config({ path: envPath });
-    break;
-  }
-}
-
-// Early API key validation with helpful error messages
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
-
-if (!OPENAI_API_KEY || OPENAI_API_KEY.startsWith("sk-your-")) {
-  console.error(
-    "[gpt5-mcp] ❌ OpenAI API key is missing or invalid.\n" +
-    "How to fix:\n" +
-    `1) Put your key in ${path.join(projectRoot, ".env")} as:\n` +
-    "   OPENAI_API_KEY=sk-xxxxxxxxxxxxxxxxxxxxxxxx\n" +
-    "OR\n" +
-    "2) Pass it at registration time:\n" +
-    `   claude mcp add --scope user gpt5-claude-mcp --env OPENAI_API_KEY='sk-...' -- node '${path.join(projectRoot, "dist/server.js")}'\n` +
-    "OR\n" +
-    "3) Temporarily run with environment variable:\n" +
-    "   OPENAI_API_KEY='sk-...' node dist/server.js"
-  );
-  process.exit(1);
-}
 
 class GPT5MCPServer {
   private server: Server;

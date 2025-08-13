@@ -1,0 +1,19 @@
+{
+  "openai": {
+    "apiKey": "",
+    "baseURL": null,
+    "defaultModel": "gpt-5",
+    "timeout": 60000
+  },
+  "server": {
+    "name": "gpt5-claude-mcp",
+    "version": "1.0.0",
+    "maxRetries": 3,
+    "retryDelay": 1000
+  },
+  "logging": {
+    "level": "info",
+    "logRequests": false,
+    "logResponses": false
+  }
+}

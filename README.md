@@ -23,27 +23,64 @@ This repository provides a **Model Context Protocol (MCP) server** that allows C
 
 ## 📦 Quick Installation
 
-### Option 1: One-Click Installation (Recommended)
+### 🚀 One-Shot Installation (Recommended)
 
-Install directly in your current project directory:
+Choose your platform and run the appropriate command:
 
+#### macOS / Linux (bash)
 ```bash
-# Automatic installation to current directory
+# Download and run installation script
 curl -fsSL https://raw.githubusercontent.com/youbin2014/gpt5_mcp/main/install.sh | bash
+
+# Or download and inspect first (recommended)
+curl -fsSL https://raw.githubusercontent.com/youbin2014/gpt5_mcp/main/install.sh -o install.sh
+chmod +x install.sh
+./install.sh
 ```
 
-### Option 2: Manual Installation
+#### Windows (PowerShell)
+```powershell
+# Download and run installation script
+iwr -useb https://raw.githubusercontent.com/youbin2014/gpt5_mcp/main/install.ps1 | iex
+
+# Or download and inspect first (recommended)
+Invoke-WebRequest -Uri https://raw.githubusercontent.com/youbin2014/gpt5_mcp/main/install.ps1 -OutFile install.ps1
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+.\install.ps1
+```
+
+**What the installation script does:**
+1. ✅ Checks prerequisites (Node.js 18+, npm, git, Claude CLI)
+2. 🔄 Clones/updates the repository to `./gpt5_mcp/`
+3. 🔑 Interactively configures your OpenAI API key
+4. 📦 Installs dependencies and builds the project
+5. 🔗 Registers with Claude Code using `--scope user`
+6. ✅ Performs health checks and validation
+
+### 🛠️ Manual Installation
+
+If you prefer to install manually:
 
 ```bash
 # Clone the repository
 git clone https://github.com/youbin2014/gpt5_mcp.git
 cd gpt5_mcp
 
-# Run installation script
-./install.sh
+# Copy environment template and configure
+cp .env.example .env
+# Edit .env file with your OpenAI API key
+
+# Install dependencies and build
+npm install
+npm run build
+
+# Register with Claude Code (user scope)
+claude mcp add --scope user gpt5-claude-mcp -- node "$(pwd)/dist/server.js"
 ```
 
-### Option 3: Development Setup
+### 🧪 Development Setup
+
+For developers wanting to contribute or customize:
 
 ```bash
 # Clone repository
@@ -54,14 +91,15 @@ cd gpt5_mcp
 npm install
 
 # Set up environment
-cp config/example.env .env
-# Edit .env file with your OpenAI API key
+cp .env.example .env
+# Edit .env with your API key
 
-# Build project
+# Development mode with hot reload
+npm run dev
+
+# Or build and register for testing
 npm run build
-
-# Add to Claude Code
-claude mcp add gpt5-claude-mcp "node $(pwd)/dist/server.js"
+claude mcp add --scope user gpt5-claude-mcp-dev -- node "$(pwd)/dist/server.js"
 ```
 
 ## ⚙️ Configuration
@@ -207,24 +245,41 @@ Formatted Response ← Message Processor ← GPT-5 Client ← Raw Response
 
 ## 🧪 Testing
 
-### Test Connection
+### 🔍 Health Check
+
+Run the comprehensive health check to verify your installation:
 
 ```bash
-# Test your OpenAI API connection
-./test.sh
+# Run health check script
+./bin/test.sh
+
+# Or from project root
+cd gpt5_mcp && ./bin/test.sh
 ```
 
-### Manual Testing
+**Health check includes:**
+- ✅ Build artifacts exist
+- ✅ Environment file configured
+- ✅ API key validation
+- ✅ Dependencies installed
+- ✅ MCP server registration
+- ✅ Server startup test
+
+### 🧪 Manual Testing
 
 ```bash
-# Start the server manually for debugging
+# Test the server directly
+cd gpt5_mcp
+node dist/server.js
+
+# Development mode with hot reload
 npm run dev
 
-# Or start the built version
-npm start
+# Test connection in Claude Code
+# Use: gpt5_test_connection({})
 ```
 
-### Run Test Suite
+### 🧪 Automated Test Suite
 
 ```bash
 # Run all tests
@@ -232,6 +287,10 @@ npm test
 
 # Run with coverage
 npm run test:coverage
+
+# Run specific test types
+npm run test:unit
+npm run test:integration
 ```
 
 ## 📁 Project Structure
@@ -315,53 +374,146 @@ The server efficiently manages token usage by:
 
 ## 🆘 Troubleshooting
 
-### Common Issues
+### 🔧 Quick Fixes
 
-#### "OpenAI API key is required" Error
-
-**Solution**: Make sure your `.env` file contains a valid OpenAI API key:
-```env
-OPENAI_API_KEY=sk-your-actual-api-key-here
-```
-
-#### "gpt5_query tool not found" in Claude Code
-
-**Solutions**:
-1. Verify MCP server is added: `claude mcp list`
-2. Re-add the server: `claude mcp add gpt5-claude-mcp "node /path/to/dist/server.js"`
-3. Restart Claude Code
-
-#### Connection timeout errors
-
-**Solutions**:
-1. Check your internet connection
-2. Verify OpenAI API key is valid
-3. Increase timeout in `.env`: `OPENAI_TIMEOUT=120000`
-
-#### "Command not found: claude"
-
-**Solution**: Install Claude Code CLI:
+First, run the health check to identify issues:
 ```bash
-# Follow instructions at:
-https://docs.anthropic.com/en/docs/claude-code
+cd gpt5_mcp && ./bin/test.sh
 ```
 
-### Debug Mode
+### 🚨 Common Issues
 
-Enable debug logging for troubleshooting:
+#### ❌ "OpenAI API key is missing or invalid"
+
+**Cause**: API key not configured or has incorrect format
+
+**Solutions**:
+1. **Check your .env file**: `cat gpt5_mcp/.env`
+2. **Verify API key format**: Must start with `sk-`
+3. **Get a new key**: Visit [OpenAI API Keys](https://platform.openai.com/api-keys)
+4. **Update .env file**:
+   ```env
+   OPENAI_API_KEY=sk-your-actual-api-key-here
+   ```
+5. **Re-register with key injection**:
+   ```bash
+   claude mcp add --scope user gpt5-claude-mcp --env OPENAI_API_KEY='sk-your-key' -- node 'gpt5_mcp/dist/server.js'
+   ```
+
+#### ❌ "gpt5_query tool not found" in Claude Code
+
+**Cause**: MCP server not properly registered
+
+**Solutions**:
+1. **Check registration**: `claude mcp list`
+2. **Look for**: `gpt5-claude-mcp` in the output
+3. **Re-register manually**:
+   ```bash
+   cd gpt5_mcp
+   claude mcp add --scope user gpt5-claude-mcp -- node "$(pwd)/dist/server.js"
+   ```
+4. **Restart Claude Code completely**
+
+#### ❌ Connection timeout errors
+
+**Cause**: Network issues or API key problems
+
+**Solutions**:
+1. **Test API key**: Run `./bin/test.sh`
+2. **Check internet connection**
+3. **Increase timeout in .env**:
+   ```env
+   OPENAI_TIMEOUT=120000
+   ```
+4. **Try different model**:
+   ```env
+   GPT5_DEFAULT_MODEL=gpt-5-mini
+   ```
+
+#### ❌ "Command not found: claude"
+
+**Cause**: Claude Code CLI not installed
+
+**Solution**: Install Claude Code:
+```bash
+# Follow the official installation guide:
+# https://docs.anthropic.com/en/docs/claude-code
+```
+
+#### ❌ Build or installation failures
+
+**Cause**: Missing dependencies or wrong Node.js version
+
+**Solutions**:
+1. **Check Node.js version**: `node -v` (requires 18+)
+2. **Clean install**:
+   ```bash
+   cd gpt5_mcp
+   rm -rf node_modules package-lock.json
+   npm install
+   npm run build
+   ```
+3. **Reinstall completely**: Delete `gpt5_mcp/` and run installation script again
+
+### 🔍 Debug Mode
+
+Enable verbose logging for detailed troubleshooting:
 
 ```env
+# Add to gpt5_mcp/.env
 LOG_LEVEL=debug
 LOG_REQUESTS=true
 LOG_RESPONSES=true
 ```
 
-### Getting Help
+Then restart the MCP server and check Claude Code console output.
 
-1. **Check Documentation**: Review `docs/troubleshooting.md`
-2. **Test Connection**: Run `./test.sh` to verify setup
-3. **View Logs**: Check console output when running Claude Code
-4. **GitHub Issues**: Report bugs or request features
+### 🛠️ Manual Recovery
+
+If automatic installation fails, try manual recovery:
+
+```bash
+# 1. Clean up existing registration
+claude mcp remove gpt5-claude-mcp 2>/dev/null || true
+claude mcp remove --scope user gpt5-claude-mcp 2>/dev/null || true
+
+# 2. Rebuild from scratch
+cd gpt5_mcp
+npm run build
+
+# 3. Manual registration with explicit paths
+claude mcp add --scope user gpt5-claude-mcp \
+  --env OPENAI_API_KEY='your-api-key-here' \
+  -- node "$(pwd)/dist/server.js"
+
+# 4. Verify registration
+claude mcp list | grep gpt5-claude-mcp
+```
+
+### 🏥 Getting Help
+
+1. **🔍 Health Check**: Always start with `./bin/test.sh`
+2. **📖 Documentation**: Check `docs/troubleshooting.md` for detailed guides
+3. **🔧 Manual Test**: Try `gpt5_test_connection({})` in Claude Code
+4. **💬 Issues**: Report bugs on [GitHub Issues](https://github.com/youbin2014/gpt5_mcp/issues)
+5. **📋 Include**: When reporting issues, include:
+   - Output of `./bin/test.sh`
+   - Your operating system
+   - Node.js version (`node -v`)
+   - Error messages from Claude Code console
+
+### 🔄 Complete Reinstallation
+
+If all else fails, start fresh:
+
+```bash
+# Remove everything
+rm -rf gpt5_mcp/
+claude mcp remove --scope user gpt5-claude-mcp 2>/dev/null || true
+
+# Reinstall from scratch
+curl -fsSL https://raw.githubusercontent.com/youbin2014/gpt5_mcp/main/install.sh | bash
+```
 
 ## 🤝 Contributing
 
