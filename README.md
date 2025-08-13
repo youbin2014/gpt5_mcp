@@ -23,29 +23,16 @@ This repository provides a **Model Context Protocol (MCP) server** that allows C
 
 ## 📦 Quick Installation
 
-### Option 1: Project-Local Installation (推荐)
+### Option 1: One-Click Installation (Recommended)
 
-在当前项目目录中安装，避免全局路径冲突：
-
-```bash
-# 方法 1: 自动安装到当前目录
-curl -fsSL https://raw.githubusercontent.com/youbin2014/gpt5_mcp/main/install.sh | bash
-# 当询问时选择 "y" (安装到当前目录)
-
-# 方法 2: 使用专用的本地安装脚本
-curl -fsSL https://raw.githubusercontent.com/youbin2014/gpt5_mcp/main/install-local.sh | bash
-```
-
-### Option 2: 全局安装
-
-安装到用户目录，所有项目共享：
+Install directly in your current project directory:
 
 ```bash
+# Automatic installation to current directory
 curl -fsSL https://raw.githubusercontent.com/youbin2014/gpt5_mcp/main/install.sh | bash
-# 当询问时选择 "n" (全局安装)
 ```
 
-### Option 3: 手动安装
+### Option 2: Manual Installation
 
 ```bash
 # Clone the repository
@@ -56,7 +43,7 @@ cd gpt5_mcp
 ./install.sh
 ```
 
-### Option 4: 开发者设置
+### Option 3: Development Setup
 
 ```bash
 # Clone repository
@@ -288,8 +275,8 @@ gpt5-claude-mcp/
 
 ```bash
 # Clone repository
-git clone https://github.com/user/gpt5-claude-mcp.git
-cd gpt5-claude-mcp
+git clone https://github.com/youbin2014/gpt5_mcp.git
+cd gpt5_mcp
 
 # Install dependencies
 npm install

@@ -34,47 +34,27 @@ log_header() {
     echo "=================================="
 }
 
-# Determine installation mode and directory
+# Determine installation directory
 if [ -z "$BASH_SOURCE" ]; then
-    # Running from curl | bash - ask user for installation preference
+    # Running from curl | bash - install in current directory
+    INSTALL_DIR="$(pwd)/gpt5_mcp"
     IS_REMOTE_INSTALL=true
-    
-    echo "🎯 Installation Location Options:"
-    echo "  1. Current directory: $(pwd)/gpt5_mcp"
-    echo "  2. Global directory: $HOME/.gpt5-claude-mcp"
-    echo ""
-    echo "You have 10 seconds to choose (or we'll install in current directory):"
-    read -t 10 -p "Install in current directory? (y/n, default: y): " install_local || install_local="y"
-    
-    if [[ $install_local =~ ^[Nn]$ ]]; then
-        INSTALL_DIR="$HOME/.gpt5-claude-mcp"
-        INSTALL_TYPE="global"
-        log_info "Installing globally to $INSTALL_DIR"
-    else
-        INSTALL_DIR="$(pwd)/gpt5_mcp"
-        INSTALL_TYPE="local"
-        log_info "Installing locally to $INSTALL_DIR"
-    fi
-    
     REPO_URL="https://github.com/youbin2014/gpt5_mcp.git"
 else
     # Running locally - install in current directory
     INSTALL_DIR="$(pwd)"
-    INSTALL_TYPE="local"
     IS_REMOTE_INSTALL=false
-    log_info "Local installation in current directory"
 fi
 
 log_header "GPT-5 Claude MCP Installation"
 
-echo "🎯 This script will:"
+echo "🎯 This script will install GPT-5 MCP server in your current project:"
 echo "   • Install GPT-5 MCP server dependencies"
 echo "   • Build the TypeScript project"  
 echo "   • Configure Claude Code integration"
 echo "   • Set up environment configuration"
 echo "   • Validate the installation"
 echo ""
-echo "📁 Installation Type: $INSTALL_TYPE"
 echo "📍 Installation Directory: $INSTALL_DIR"
 echo ""
 
@@ -121,27 +101,13 @@ if [ "$IS_REMOTE_INSTALL" = true ]; then
     # Check for existing installation
     if [ -d "$INSTALL_DIR" ]; then
         log_warning "Directory $INSTALL_DIR already exists."
-        
-        # Check if user wants to update or reinstall
-        if [ -t 0 ] && [ -t 1 ]; then
-            read -p "Do you want to remove existing installation and reinstall? (y/n): " reinstall
-        else
-            read -t 10 -p "Do you want to remove existing installation and reinstall? (y/n): " reinstall || reinstall="y"
-        fi
-        
-        if [[ $reinstall =~ ^[Yy]$ ]]; then
-            log_info "Removing existing installation..."
+        echo "Updating existing installation..."
+        cd "$INSTALL_DIR"
+        git pull origin main || {
+            log_warning "Git pull failed, removing and reinstalling..."
+            cd /
             rm -rf "$INSTALL_DIR"
-            log_success "Existing installation removed"
-        else
-            log_info "Updating existing installation..."
-            cd "$INSTALL_DIR"
-            git pull origin main || {
-                log_warning "Git pull failed, removing and reinstalling..."
-                cd /
-                rm -rf "$INSTALL_DIR"
-            }
-        fi
+        }
     fi
     
     # Clone if directory doesn't exist
@@ -285,29 +251,22 @@ if command -v claude &> /dev/null; then
         fi
     fi
     
-    # Build the MCP add command based on installation type
-    if [ "$INSTALL_TYPE" = "local" ]; then
-        # For local installation, create a more robust command that works from any directory
-        MCP_SERVER_PATH="$(pwd)/dist/server.js"
-        MCP_COMMAND="claude mcp add gpt5-claude-mcp \"node $MCP_SERVER_PATH\""
-        
-        # Also create a project-specific MCP configuration script
-        cat > mcp-setup.sh << EOF
+    # Build the MCP add command
+    MCP_SERVER_PATH="$(pwd)/dist/server.js"
+    MCP_COMMAND="claude mcp add gpt5-claude-mcp \"node $MCP_SERVER_PATH\""
+    
+    # Create a project-specific MCP configuration script
+    cat > mcp-setup.sh << EOF
 #!/bin/bash
-# Project-specific MCP setup script
+# MCP setup script for this installation
 echo "🔧 Setting up GPT-5 MCP for this project..."
 claude mcp remove gpt5-claude-mcp 2>/dev/null || true
 claude mcp add gpt5-claude-mcp "node \$(dirname \$0)/dist/server.js"
 echo "✅ GPT-5 MCP server configured for this project"
 EOF
-        chmod +x mcp-setup.sh
-        
-        log_info "Created project-specific MCP setup script: mcp-setup.sh"
-    else
-        # Global installation uses absolute path
-        MCP_SERVER_PATH="$(pwd)/dist/server.js"
-        MCP_COMMAND="claude mcp add gpt5-claude-mcp \"node $MCP_SERVER_PATH\""
-    fi
+    chmod +x mcp-setup.sh
+    
+    log_info "Created project-specific MCP setup script: mcp-setup.sh"
     
     log_info "Adding MCP server to Claude Code..."
     echo "Running: $MCP_COMMAND"
@@ -389,36 +348,20 @@ log_header "Installation Complete!"
 echo ""
 echo "🎉 GPT-5 Claude MCP Server has been installed successfully!"
 echo ""
-echo "📁 Installation Type: $INSTALL_TYPE"
 echo "📍 Installation Directory: $(pwd)"
 echo ""
-
-if [ "$INSTALL_TYPE" = "local" ]; then
-    echo "🔧 Project-specific installation completed!"
-    echo ""
-    echo "📂 Files created in this project:"
-    echo "   • dist/server.js - MCP server"
-    echo "   • .env - Configuration file"
-    echo "   • mcp-setup.sh - Project MCP setup script"
-    echo "   • test.sh - Connection test script"
-    echo ""
-    echo "🔄 If you switch projects or move this folder:"
-    echo "   Run: ./mcp-setup.sh (to reconfigure MCP for new location)"
-    echo ""
-else
-    echo "🌐 Global installation completed!"
-    echo ""
-fi
-
+echo "🔧 Installation completed!"
+echo ""
+echo "📂 Files created in this project:"
+echo "   • dist/server.js - MCP server"
+echo "   • .env - Configuration file"
+echo "   • mcp-setup.sh - Project MCP setup script"
+echo "   • test.sh - Connection test script"
+echo ""
 echo "🔧 Next steps:"
 echo "   1. Ensure your OpenAI API key is configured in .env"
 echo "   2. Test the connection: ./test.sh"
-if [ "$INSTALL_TYPE" = "local" ]; then
-    echo "   3. When working in this project, GPT-5 is ready to use!"
-    echo "   4. For other projects, copy this folder or run install again"
-else
-    echo "   3. GPT-5 is now available in all your Claude Code sessions!"
-fi
+echo "   3. GPT-5 is ready to use in Claude Code!"
 echo ""
 echo "💬 How to use (Natural Conversation - Recommended):"
 echo "   Just ask Claude Code things like:"
